@@ -386,19 +386,9 @@ impl Position {
             return Vec::new();
         }
 
-        let row_step;
-        let col_step;
-        if self.is_left_of(to) {
-            col_step = 1;
-        } else {
-            col_step = -1;
-        }
+        let col_step = if self.is_left_of(to) { 1 } else { -1 };
 
-        if self.is_below(to) {
-            row_step = 1;
-        } else {
-            row_step = -1;
-        }
+        let row_step = if self.is_below(to) { 1 } else { -1 };
 
         let mut acc = *self;
         let mut result = Vec::new();

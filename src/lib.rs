@@ -32,6 +32,7 @@ pub const BLACK: Color = Color::Black;
 
 /// The result of a move being played on the board.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[allow(clippy::large_enum_variant)]
 pub enum GameResult {
     /// The game is not finished, and the game is still in play.
     Continuing(Board),

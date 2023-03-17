@@ -506,14 +506,14 @@ impl Board {
     /// Otherwise, return false.
     #[inline]
     pub fn has_piece(&self, pos: Position) -> bool {
-        self.get_piece(pos) != None
+        self.get_piece(pos).is_some()
     }
 
     /// If a square at a given position has no piece, return true.
     /// Otherwise, return false.
     #[inline]
     pub fn has_no_piece(&self, pos: Position) -> bool {
-        self.get_piece(pos) == None
+        self.get_piece(pos).is_none()
     }
 
     /// If there is a king on the board, return the position that it sits on.
@@ -735,28 +735,21 @@ impl Board {
 
         pieces.sort();
 
-        if pieces.len() == 0 {
-            false
-        } else if pieces.len() == 1 && pieces[0].is_king() {
-            false
-        } else if pieces.len() == 2 && pieces[0].is_king() && pieces[1].is_knight() {
-            false
-        } else if pieces.len() == 2 && pieces[0].is_king() && pieces[1].is_bishop() {
-            false
-        } else if pieces.len() == 3
-            && pieces[0].is_king()
-            && pieces[1].is_knight()
-            && pieces[2].is_knight()
-        {
-            false
-        } else if pieces.len() == 3
-            && pieces[0].is_king()
-            && pieces[1].is_bishop()
-            && pieces[2].is_bishop()
+        if pieces.is_empty()
+            || pieces.len() == 1 && pieces[0].is_king()
+            || pieces.len() == 2 && pieces[0].is_king() && pieces[1].is_knight()
+            || pieces.len() == 2 && pieces[0].is_king() && pieces[1].is_bishop()
+            || pieces.len() == 3
+                && pieces[0].is_king()
+                && pieces[1].is_knight()
+                && pieces[2].is_knight()
         {
             false
         } else {
-            true
+            !(pieces.len() == 3
+                && pieces[0].is_king()
+                && pieces[1].is_bishop()
+                && pieces[2].is_bishop())
         }
     }
 
