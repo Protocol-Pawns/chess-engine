@@ -1,7 +1,10 @@
 use super::Piece;
+use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 
 /// Essentially a container for a single piece on a board.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, BorshDeserialize, BorshSerialize,
+)]
 pub struct Square {
     piece: Option<Piece>,
 }

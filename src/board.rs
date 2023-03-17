@@ -4,6 +4,7 @@ use alloc::{
     vec::Vec,
 };
 use core::cmp::Ordering;
+use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 
 pub struct BoardBuilder {
     board: Board,
@@ -118,7 +119,7 @@ impl BoardBuilder {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, BorshDeserialize, BorshSerialize)]
 pub struct CastlingRights {
     kingside: bool,
     queenside: bool,
@@ -195,7 +196,7 @@ impl Default for Board {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, BorshDeserialize, BorshSerialize)]
 pub struct Board {
     squares: [Square; 64],
 

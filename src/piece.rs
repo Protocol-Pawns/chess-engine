@@ -2,6 +2,7 @@ use super::{Board, Color, Move, Position};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::convert::TryFrom;
+use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 
 /// A piece on a board.
 ///
@@ -12,7 +13,7 @@ use core::convert::TryFrom;
 /// 2. The validity of legal attacks
 /// 3. Move generation
 /// 4. Material and positional value
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, BorshDeserialize, BorshSerialize)]
 pub enum Piece {
     King(Color, Position),
     Queen(Color, Position),

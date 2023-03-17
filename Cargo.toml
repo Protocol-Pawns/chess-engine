@@ -26,3 +26,6 @@ name = "chess"
 
 [[example]]
 name = "terminal"
+
+[dependencies]
+near-sdk = "4"

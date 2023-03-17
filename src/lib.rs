@@ -5,6 +5,7 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
+use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 
 use core::convert::TryFrom;
 
@@ -63,7 +64,7 @@ pub enum GameResult {
 }
 
 /// The color of a piece.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, BorshDeserialize, BorshSerialize)]
 pub enum Color {
     White,
     Black,
