@@ -410,7 +410,6 @@ impl Piece {
     /// Get the exhaustive list of legal moves for a given piece.
     ///
     /// This is used for move generation.
-    #[inline]
     pub(crate) fn get_legal_moves(&self, board: &Board) -> Vec<Move> {
         let mut result = Vec::new();
         match *self {
