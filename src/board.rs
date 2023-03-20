@@ -239,7 +239,7 @@ impl Board {
             .filter_map(move |square| {
                 if let Some(piece) = square.get_piece() {
                     if piece.get_color() == color {
-                        Some(piece.get_legal_moves(self).into_iter())
+                        Some(piece.get_legal_moves(self))
                     } else {
                         None
                     }

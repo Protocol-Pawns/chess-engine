@@ -1,7 +1,8 @@
+use crate::GeneratorIteratorAdapter;
+
 use super::{Board, Color, Move, Position};
 use alloc::string::String;
-use alloc::vec::Vec;
-use core::convert::TryFrom;
+use core::{convert::TryFrom, ops::Generator};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 
 /// A piece on a board.
@@ -410,164 +411,179 @@ impl Piece {
     /// Get the exhaustive list of legal moves for a given piece.
     ///
     /// This is used for move generation.
-    pub(crate) fn get_legal_moves(&self, board: &Board) -> Vec<Move> {
-        let mut result = Vec::new();
-        match *self {
-            Self::Pawn(ally_color, pos) => {
-                let up = pos.pawn_up(ally_color);
-                let next_up = up.pawn_up(ally_color);
-                let up_left = up.next_left();
-                let up_right = up.next_right();
-
-                if let Some(en_passant) = board.get_en_passant() {
-                    if en_passant == up_left || en_passant == up_right {
-                        result.push(Move::Piece(pos, en_passant));
-                    }
-                }
-
-                if next_up.is_on_board()
-                    && self.is_starting_pawn()
-                    && board.has_no_piece(up)
-                    && board.has_no_piece(next_up)
-                {
-                    result.push(Move::Piece(pos, next_up))
-                }
-
-                if up.is_on_board() && board.has_no_piece(up) {
-                    result.push(Move::Piece(pos, up))
-                }
-
-                if up_left.is_on_board() && board.has_enemy_piece(up_left, ally_color) {
-                    result.push(Move::Piece(pos, up_left))
-                }
-
-                if up_right.is_on_board() && board.has_enemy_piece(up_right, ally_color) {
-                    result.push(Move::Piece(pos, up_right))
-                }
-            }
-
-            Self::King(ally_color, pos) => {
-                for p in &[
-                    pos.next_left(),
-                    pos.next_right(),
-                    pos.next_above(),
-                    pos.next_below(),
-                    pos.next_left().next_above(),
-                    pos.next_left().next_below(),
-                    pos.next_right().next_above(),
-                    pos.next_right().next_below(),
-                ] {
-                    if p.is_on_board() && !board.has_ally_piece(*p, ally_color) {
-                        result.push(Move::Piece(pos, *p))
-                    }
-                }
-                if board.can_kingside_castle(ally_color) {
-                    result.push(Move::KingSideCastle);
-                } else if board.can_queenside_castle(ally_color) {
-                    result.push(Move::QueenSideCastle);
-                }
-            }
-
-            Self::Queen(ally_color, pos) => {
-                for row in 0..8 {
-                    let new_pos = Position::new(row, pos.get_col());
-                    if new_pos != pos
-                        && !board.has_ally_piece(new_pos, ally_color)
-                        && new_pos.is_orthogonal_to(pos)
-                    {
-                        result.push(Move::Piece(pos, new_pos));
-                    }
-                }
-                for col in 0..8 {
-                    let new_pos = Position::new(pos.get_row(), col);
-                    if new_pos != pos
-                        && !board.has_ally_piece(new_pos, ally_color)
-                        && new_pos.is_orthogonal_to(pos)
-                    {
-                        result.push(Move::Piece(pos, new_pos));
-                    }
-                }
-
-                for row in 0..8 {
-                    for col in 0..8 {
-                        let new_pos = Position::new(row, col);
-                        if new_pos != pos
-                            && !board.has_ally_piece(new_pos, ally_color)
-                            && new_pos.is_diagonal_to(pos)
-                        {
-                            result.push(Move::Piece(pos, new_pos));
-                        }
-                    }
-                }
-            }
-
-            Self::Rook(ally_color, pos) => {
-                for row in 0..8 {
-                    let new_pos = Position::new(row, pos.get_col());
-                    if new_pos != pos
-                        && !board.has_ally_piece(new_pos, ally_color)
-                        && new_pos.is_orthogonal_to(pos)
-                    {
-                        result.push(Move::Piece(pos, new_pos));
-                    }
-                }
-                for col in 0..8 {
-                    let new_pos = Position::new(pos.get_row(), col);
-                    if new_pos != pos
-                        && !board.has_ally_piece(new_pos, ally_color)
-                        && new_pos.is_orthogonal_to(pos)
-                    {
-                        result.push(Move::Piece(pos, new_pos));
-                    }
-                }
-            }
-
-            Self::Bishop(ally_color, pos) => {
-                for row in 0..8 {
-                    for col in 0..8 {
-                        let new_pos = Position::new(row, col);
-                        if new_pos != pos
-                            && !board.has_ally_piece(new_pos, ally_color)
-                            && new_pos.is_diagonal_to(pos)
-                        {
-                            result.push(Move::Piece(pos, new_pos));
-                        }
-                    }
-                }
-            }
-
-            Self::Knight(ally_color, pos) => {
-                for p in &[
-                    pos.next_left().next_left().next_above(),
-                    pos.next_left().next_above().next_above(),
-                    pos.next_left().next_left().next_below(),
-                    pos.next_left().next_below().next_below(),
-                    pos.next_right().next_right().next_above(),
-                    pos.next_right().next_above().next_above(),
-                    pos.next_right().next_right().next_below(),
-                    pos.next_right().next_below().next_below(),
-                ] {
-                    if p.is_on_board() && !board.has_ally_piece(*p, ally_color) {
-                        result.push(Move::Piece(pos, *p))
-                    }
-                }
-            }
-        }
-
+    pub(crate) fn get_legal_moves(self, board: &Board) -> impl Iterator<Item = Move> + '_ {
         let color = self.get_color();
-        result
-            .into_iter()
-            .filter(|x| match x {
-                Move::Piece(from, to) => {
-                    if from.is_on_board() && to.is_on_board() {
-                        board.is_legal_move(*x, color)
-                    } else {
-                        false
+        let moves = GeneratorIteratorAdapter::new(self.get_moves(board));
+        moves.filter(move |x| match x {
+            Move::Piece(from, to) => {
+                if from.is_on_board() && to.is_on_board() {
+                    board.is_legal_move(*x, color)
+                } else {
+                    false
+                }
+            }
+            _ => board.is_legal_move(*x, color),
+        })
+    }
+
+    pub(crate) fn get_moves(self, board: &Board) -> impl Generator<Yield = Move, Return = ()> + '_ {
+        move || {
+            match self {
+                Self::Pawn(ally_color, pos) => {
+                    let up = pos.pawn_up(ally_color);
+                    let next_up = up.pawn_up(ally_color);
+                    let up_left = up.next_left();
+                    let up_right = up.next_right();
+
+                    if let Some(en_passant) = board.get_en_passant() {
+                        if en_passant == up_left || en_passant == up_right {
+                            yield Move::Piece(pos, en_passant);
+                        }
+                    }
+
+                    if next_up.is_on_board()
+                        && self.is_starting_pawn()
+                        && board.has_no_piece(up)
+                        && board.has_no_piece(next_up)
+                    {
+                        yield Move::Piece(pos, next_up)
+                    }
+
+                    if up.is_on_board() && board.has_no_piece(up) {
+                        yield Move::Piece(pos, up)
+                    }
+
+                    if up_left.is_on_board() && board.has_enemy_piece(up_left, ally_color) {
+                        yield Move::Piece(pos, up_left)
+                    }
+
+                    if up_right.is_on_board() && board.has_enemy_piece(up_right, ally_color) {
+                        yield Move::Piece(pos, up_right)
                     }
                 }
-                _ => board.is_legal_move(*x, color),
-            })
-            .collect::<Vec<Move>>()
+
+                Self::King(ally_color, pos) => {
+                    for p in [
+                        pos.next_left(),
+                        pos.next_right(),
+                        pos.next_above(),
+                        pos.next_below(),
+                        pos.next_left().next_above(),
+                        pos.next_left().next_below(),
+                        pos.next_right().next_above(),
+                        pos.next_right().next_below(),
+                    ] {
+                        if p.is_on_board() && !board.has_ally_piece(p, ally_color) {
+                            yield Move::Piece(pos, p)
+                        }
+                    }
+                    if board.can_kingside_castle(ally_color) {
+                        yield Move::KingSideCastle;
+                    } else if board.can_queenside_castle(ally_color) {
+                        yield Move::QueenSideCastle;
+                    }
+                }
+
+                Self::Queen(ally_color, pos) => {
+                    for row in 0..8 {
+                        let new_pos = Position::new(row, pos.get_col());
+                        if new_pos != pos
+                            && !board.has_ally_piece(new_pos, ally_color)
+                            && new_pos.is_orthogonal_to(pos)
+                        {
+                            yield Move::Piece(pos, new_pos);
+                        }
+                    }
+                    for col in 0..8 {
+                        let new_pos = Position::new(pos.get_row(), col);
+                        if new_pos != pos
+                            && !board.has_ally_piece(new_pos, ally_color)
+                            && new_pos.is_orthogonal_to(pos)
+                        {
+                            yield Move::Piece(pos, new_pos);
+                        }
+                    }
+
+                    for row in 0..8 {
+                        for col in 0..8 {
+                            let new_pos = Position::new(row, col);
+                            if new_pos != pos
+                                && !board.has_ally_piece(new_pos, ally_color)
+                                && new_pos.is_diagonal_to(pos)
+                            {
+                                yield Move::Piece(pos, new_pos);
+                            }
+                        }
+                    }
+                }
+
+                Self::Rook(ally_color, pos) => {
+                    for row in 0..8 {
+                        let new_pos = Position::new(row, pos.get_col());
+                        if new_pos != pos
+                            && !board.has_ally_piece(new_pos, ally_color)
+                            && new_pos.is_orthogonal_to(pos)
+                        {
+                            yield Move::Piece(pos, new_pos);
+                        }
+                    }
+                    for col in 0..8 {
+                        let new_pos = Position::new(pos.get_row(), col);
+                        if new_pos != pos
+                            && !board.has_ally_piece(new_pos, ally_color)
+                            && new_pos.is_orthogonal_to(pos)
+                        {
+                            yield Move::Piece(pos, new_pos);
+                        }
+                    }
+                }
+
+                Self::Bishop(ally_color, pos) => {
+                    for row in 0..8 {
+                        for col in 0..8 {
+                            let new_pos = Position::new(row, col);
+                            if new_pos != pos
+                                && !board.has_ally_piece(new_pos, ally_color)
+                                && new_pos.is_diagonal_to(pos)
+                            {
+                                yield Move::Piece(pos, new_pos);
+                            }
+                        }
+                    }
+                }
+
+                Self::Knight(ally_color, pos) => {
+                    for p in [
+                        pos.next_left().next_left().next_above(),
+                        pos.next_left().next_above().next_above(),
+                        pos.next_left().next_left().next_below(),
+                        pos.next_left().next_below().next_below(),
+                        pos.next_right().next_right().next_above(),
+                        pos.next_right().next_above().next_above(),
+                        pos.next_right().next_right().next_below(),
+                        pos.next_right().next_below().next_below(),
+                    ] {
+                        if p.is_on_board() && !board.has_ally_piece(p, ally_color) {
+                            yield Move::Piece(pos, p)
+                        }
+                    }
+                }
+            }
+
+            // result
+            //     .into_iter()
+            //     .filter(|x| match x {
+            //         Move::Piece(from, to) => {
+            //             if from.is_on_board() && to.is_on_board() {
+            //                 board.is_legal_move(*x, color)
+            //             } else {
+            //                 false
+            //             }
+            //         }
+            //         _ => board.is_legal_move(*x, color),
+            //     })
+            //     .collect::<Vec<Move>>()
+        }
     }
 
     /// Verify that moving to a new position is a legal move.

@@ -1,11 +1,17 @@
+#![feature(generators, generator_trait)]
 #![no_std]
 #[macro_use]
 extern crate alloc;
 use alloc::{
+    boxed::Box,
     string::{String, ToString},
     vec::Vec,
 };
-use core::convert::TryFrom;
+use core::{
+    convert::TryFrom,
+    ops::{Generator, GeneratorState},
+    pin::Pin,
+};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -242,6 +248,31 @@ impl core::fmt::Display for Move {
             Move::KingSideCastle => write!(f, "O-O"),
             Move::QueenSideCastle => write!(f, "O-O-O"),
             Move::Resign => write!(f, "Resign"),
+        }
+    }
+}
+
+pub(crate) struct GeneratorIteratorAdapter<G>(Pin<Box<G>>);
+
+impl<G> GeneratorIteratorAdapter<G>
+where
+    G: Generator<Return = ()>,
+{
+    fn new(gen: G) -> Self {
+        Self(Box::pin(gen))
+    }
+}
+
+impl<G> Iterator for GeneratorIteratorAdapter<G>
+where
+    G: Generator<Return = ()>,
+{
+    type Item = G::Yield;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.0.as_mut().resume(()) {
+            GeneratorState::Yielded(x) => Some(x),
+            GeneratorState::Complete(_) => None,
         }
     }
 }
