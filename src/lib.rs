@@ -5,9 +5,12 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-
 use core::convert::TryFrom;
+use near_sdk::{
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    serde::{Deserialize, Serialize},
+};
+use witgen::witgen;
 
 mod board;
 pub use board::{Board, BoardBuilder};
@@ -65,7 +68,21 @@ pub enum GameResult {
 }
 
 /// The color of a piece.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, BorshDeserialize, BorshSerialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    BorshDeserialize,
+    BorshSerialize,
+    Deserialize,
+    Serialize,
+)]
+#[serde(crate = "near_sdk::serde")]
+#[witgen]
 pub enum Color {
     White,
     Black,

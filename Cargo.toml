@@ -29,3 +29,7 @@ name = "terminal"
 
 [dependencies]
 near-sdk = "4"
+witgen = "0.15"
+
+[package.metadata.witgen]
+export = true
