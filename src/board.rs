@@ -1,7 +1,10 @@
 use super::*;
 use alloc::string::{String, ToString};
 use core::cmp::Ordering;
+use either::Either;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use rand::{seq::IteratorRandom, SeedableRng};
+use rand_chacha::ChaCha20Rng;
 
 pub struct BoardBuilder {
     board: Board,
@@ -260,7 +263,7 @@ impl Board {
     ///
     /// It's best not to use the rating value by itself for anything, as it
     /// is relative to the other player's move ratings as well.
-    pub fn get_best_next_move(&self, depth: i32) -> (Move, u64, f64) {
+    pub fn get_best_next_move(&self, depth: u8) -> (Move, u64, f64) {
         let legal_moves = self.get_legal_moves();
         let mut best_move_value = -999999.0;
         let mut best_move = Move::Resign;
@@ -270,7 +273,7 @@ impl Board {
         let mut board_count = 0;
         for m in legal_moves {
             let child_board_value = self.apply_eval_move(m).minimax(
-                depth,
+                Either::Left(depth),
                 -1000000.0,
                 1000000.0,
                 false,
@@ -286,8 +289,11 @@ impl Board {
         (best_move, board_count, best_move_value)
     }
 
-    pub fn get_next_move(&self, depth: i32) -> (Move, u64, f64) {
-        let legal_moves = self.get_legal_moves();
+    pub fn get_next_move(&self, depths: &[u8], seed: [u8; 32]) -> (Move, u64, f64) {
+        let mut rng = ChaCha20Rng::from_seed(seed);
+        let legal_moves = self
+            .get_legal_moves()
+            .choose_multiple(&mut rng, depths[0].into());
         let mut best_move_value = -999999.0;
         let mut best_move = Move::Resign;
 
@@ -296,7 +302,7 @@ impl Board {
         let mut board_count = 0;
         for m in legal_moves {
             let child_board_value = self.apply_eval_move(m).minimax(
-                depth,
+                Either::Right((&depths[1..], rng.clone())),
                 -1000000.0,
                 1000000.0,
                 false,
@@ -322,7 +328,7 @@ impl Board {
     ///
     /// It's best not to use the rating value by itself for anything, as it
     /// is relative to the other player's move ratings as well.
-    pub fn get_worst_next_move(&self, depth: i32) -> (Move, u64, f64) {
+    pub fn get_worst_next_move(&self, depth: u8) -> (Move, u64, f64) {
         let legal_moves = self.get_legal_moves();
         let mut best_move_value = -999999.0;
         let mut best_move = Move::Resign;
@@ -332,7 +338,7 @@ impl Board {
         let mut board_count = 0;
         for m in legal_moves {
             let child_board_value = self.apply_eval_move(m).minimax(
-                depth,
+                Either::Left(depth),
                 -1000000.0,
                 1000000.0,
                 true,
@@ -358,7 +364,7 @@ impl Board {
     /// are categorically eliminated by this algorithm.
     pub fn minimax(
         &self,
-        depth: i32,
+        depth: Either<u8, (&[u8], ChaCha20Rng)>,
         mut alpha: f64,
         mut beta: f64,
         is_maximizing: bool,
@@ -367,60 +373,127 @@ impl Board {
     ) -> f64 {
         *board_count += 1;
 
-        if depth == 0 {
-            return self.value_for(getting_move_for);
-        }
+        let (mut next_depth, max_moves) = match depth {
+            Either::Left(depth) if depth == 0 => {
+                return self.value_for(getting_move_for);
+            }
+            Either::Right((depth, _)) if depth.is_empty() => {
+                return self.value_for(getting_move_for);
+            }
+            Either::Left(depth) => (Either::Left(depth - 1), None),
+            Either::Right((depth, rng)) => (Either::Right((&depth[1..], rng)), Some(depth[0])),
+        };
 
-        let legal_moves = self.get_legal_moves();
         let mut best_move_value;
 
         if is_maximizing {
             best_move_value = -999999.0;
 
-            for m in legal_moves {
-                let child_board_value = self.apply_eval_move(m).minimax(
-                    depth - 1,
-                    alpha,
-                    beta,
-                    !is_maximizing,
-                    getting_move_for,
-                    board_count,
-                );
+            if let Some(max_moves) = max_moves {
+                let Either::Right((_, rng)) = &mut next_depth else {
+                    panic!();
+                };
+                for m in self
+                    .get_legal_moves()
+                    .choose_multiple(rng, max_moves as usize)
+                {
+                    let child_board_value = self.apply_eval_move(m).minimax(
+                        next_depth.clone(),
+                        alpha,
+                        beta,
+                        !is_maximizing,
+                        getting_move_for,
+                        board_count,
+                    );
 
-                if child_board_value > best_move_value {
-                    best_move_value = child_board_value;
-                }
+                    if child_board_value > best_move_value {
+                        best_move_value = child_board_value;
+                    }
 
-                if best_move_value > alpha {
-                    alpha = best_move_value
-                }
+                    if best_move_value > alpha {
+                        alpha = best_move_value
+                    }
 
-                if beta <= alpha {
-                    return best_move_value;
+                    if beta <= alpha {
+                        return best_move_value;
+                    }
                 }
-            }
+            } else {
+                for m in self.get_legal_moves() {
+                    let child_board_value = self.apply_eval_move(m).minimax(
+                        next_depth.clone(),
+                        alpha,
+                        beta,
+                        !is_maximizing,
+                        getting_move_for,
+                        board_count,
+                    );
+
+                    if child_board_value > best_move_value {
+                        best_move_value = child_board_value;
+                    }
+
+                    if best_move_value > alpha {
+                        alpha = best_move_value
+                    }
+
+                    if beta <= alpha {
+                        return best_move_value;
+                    }
+                }
+            };
         } else {
             best_move_value = 999999.0;
 
-            for m in legal_moves {
-                let child_board_value = self.apply_eval_move(m).minimax(
-                    depth - 1,
-                    alpha,
-                    beta,
-                    !is_maximizing,
-                    getting_move_for,
-                    board_count,
-                );
-                if child_board_value < best_move_value {
-                    best_move_value = child_board_value;
-                }
+            if let Some(max_moves) = max_moves {
+                let Either::Right((_, rng)) = &mut next_depth else {
+                    panic!();
+                };
+                for m in self
+                    .get_legal_moves()
+                    .choose_multiple(rng, max_moves as usize)
+                {
+                    let child_board_value = self.apply_eval_move(m).minimax(
+                        next_depth.clone(),
+                        alpha,
+                        beta,
+                        !is_maximizing,
+                        getting_move_for,
+                        board_count,
+                    );
+                    if child_board_value < best_move_value {
+                        best_move_value = child_board_value;
+                    }
 
-                if best_move_value < beta {
-                    beta = best_move_value
-                }
+                    if best_move_value < beta {
+                        beta = best_move_value
+                    }
 
-                if beta <= alpha {
-                    return best_move_value;
+                    if beta <= alpha {
+                        return best_move_value;
+                    }
+                }
+            } else {
+                for m in self.get_legal_moves() {
+                    let child_board_value = self.apply_eval_move(m).minimax(
+                        next_depth.clone(),
+                        alpha,
+                        beta,
+                        !is_maximizing,
+                        getting_move_for,
+                        board_count,
+                    );
+                    if child_board_value < best_move_value {
+                        best_move_value = child_board_value;
+                    }
+
+                    if best_move_value < beta {
+                        beta = best_move_value
+                    }
+
+                    if beta <= alpha {
+                        return best_move_value;
+                    }
                 }
             }
         }

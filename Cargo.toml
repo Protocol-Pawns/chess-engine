@@ -28,7 +28,10 @@ name = "chess"
 name = "terminal"
 
 [dependencies]
+either = "1"
 near-sdk = "4"
+rand = { version ="0.8", default-features = false, features = ["alloc"] }
+rand_chacha = "0.3"
 witgen = "0.15"
 
 [package.metadata.witgen]
