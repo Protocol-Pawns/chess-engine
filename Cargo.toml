@@ -29,10 +29,14 @@ name = "terminal"
 
 [dependencies]
 either = "1"
-near-sdk = "4"
 rand = { version ="0.8", default-features = false, features = ["alloc"] }
 rand_chacha = "0.3"
 witgen = "0.15"
+
+[dependencies.near-sdk]
+version = "4"
+git = "https://github.com/near/near-sdk-rs.git"
+rev = "89f8c2d776c8d00feb45239fdb15725527f1894b"
 
 [package.metadata.witgen]
 export = true
