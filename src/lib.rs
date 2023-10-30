@@ -1,4 +1,4 @@
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 #![no_std]
 #[macro_use]
 extern crate alloc;
@@ -9,7 +9,7 @@ use alloc::{
 };
 use core::{
     convert::TryFrom,
-    ops::{Generator, GeneratorState},
+    ops::{Coroutine, CoroutineState},
     pin::Pin,
 };
 use near_sdk::{
@@ -252,27 +252,27 @@ impl core::fmt::Display for Move {
     }
 }
 
-pub(crate) struct GeneratorIteratorAdapter<G>(Pin<Box<G>>);
+pub(crate) struct CoroutineIteratorAdapter<G>(Pin<Box<G>>);
 
-impl<G> GeneratorIteratorAdapter<G>
+impl<G> CoroutineIteratorAdapter<G>
 where
-    G: Generator<Return = ()>,
+    G: Coroutine<Return = ()>,
 {
     fn new(gen: G) -> Self {
         Self(Box::pin(gen))
     }
 }
 
-impl<G> Iterator for GeneratorIteratorAdapter<G>
+impl<G> Iterator for CoroutineIteratorAdapter<G>
 where
-    G: Generator<Return = ()>,
+    G: Coroutine<Return = ()>,
 {
     type Item = G::Yield;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.0.as_mut().resume(()) {
-            GeneratorState::Yielded(x) => Some(x),
-            GeneratorState::Complete(_) => None,
+            CoroutineState::Yielded(x) => Some(x),
+            CoroutineState::Complete(_) => None,
         }
     }
 }

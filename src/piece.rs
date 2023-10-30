@@ -1,8 +1,8 @@
-use crate::GeneratorIteratorAdapter;
+use crate::CoroutineIteratorAdapter;
 
 use super::{Board, Color, Move, Position};
 use alloc::string::String;
-use core::{convert::TryFrom, ops::Generator};
+use core::{convert::TryFrom, ops::Coroutine};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 
 /// A piece on a board.
@@ -413,7 +413,7 @@ impl Piece {
     /// This is used for move generation.
     pub(crate) fn get_legal_moves(self, board: &Board) -> impl Iterator<Item = Move> + '_ {
         let color = self.get_color();
-        let moves = GeneratorIteratorAdapter::new(self.get_moves(board));
+        let moves = CoroutineIteratorAdapter::new(self.get_moves(board));
         moves.filter(move |x| match x {
             Move::Piece(from, to) => {
                 if from.is_on_board() && to.is_on_board() {
@@ -426,7 +426,7 @@ impl Piece {
         })
     }
 
-    pub(crate) fn get_moves(self, board: &Board) -> impl Generator<Yield = Move, Return = ()> + '_ {
+    pub(crate) fn get_moves(self, board: &Board) -> impl Coroutine<Yield = Move, Return = ()> + '_ {
         move || {
             match self {
                 Self::Pawn(ally_color, pos) => {

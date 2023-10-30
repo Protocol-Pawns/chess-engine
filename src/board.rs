@@ -374,7 +374,7 @@ impl Board {
         *board_count += 1;
 
         let (mut next_depth, max_moves) = match depth {
-            Either::Left(depth) if depth == 0 => {
+            Either::Left(0) => {
                 return self.value_for(getting_move_for);
             }
             Either::Right((depth, _)) if depth.is_empty() => {

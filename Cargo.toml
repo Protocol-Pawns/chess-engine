@@ -1,7 +1,10 @@
 [package]
 name = "chess-engine"
 version = "0.1.2"
-authors = ["Adam McDaniel <adam.mcdaniel17@gmail.com>"]
+authors = [
+    "Adam McDaniel <adam.mcdaniel17@gmail.com>",
+    "Mario Reder <mario.reder@pm.me>",
+]
 edition = "2018"
 description = "A dependency-free chess engine library built to run anywhere."
 documentation = "https://docs.rs/chess-engine/"
@@ -15,11 +18,9 @@ categories = [
     "no-std",
     "game-engines",
     "game-development",
-    "algorithms"
+    "algorithms",
 ]
 
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [[bin]]
 path = "src/bin.rs"
 name = "chess"
@@ -28,15 +29,18 @@ name = "chess"
 name = "terminal"
 
 [dependencies]
+borsh = "1"
 either = "1"
-rand = { version ="0.8", default-features = false, features = ["alloc"] }
+rand = { version = "0.8", default-features = false, features = ["alloc"] }
 rand_chacha = "0.3"
 witgen = "0.15"
 
 [dependencies.near-sdk]
 version = "4"
 git = "https://github.com/near/near-sdk-rs.git"
-rev = "89f8c2d776c8d00feb45239fdb15725527f1894b"
+rev = "ee5cf867741d6d0d4db15857609b9e9268cc9b32"
+default-features = false
+features = ["unstable"]
 
 [package.metadata.witgen]
 export = true
